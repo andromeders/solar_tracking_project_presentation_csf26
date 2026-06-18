@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANDROMEDERS - Solar Tracking Mission Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        androDark: '#060709',
+                        androCard: '#0F1115',
+                        androLime: '#CCFF00',
+                        androBlue: '#00E5FF',
+                        androRed: '#FF3366',
+                    },
+                    boxShadow: {
+                        limeGlow: '0 0 25px rgba(204, 255, 0, 0.25)',
+                        blueGlow: '0 0 25px rgba(0, 229, 255, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0F1115; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1F2937; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #CCFF00; }
+        
+        /* Slide Pane Setup - Flex handling without layout breakage */
+        .slide-pane { display: none; width: 100%; flex-direction: column; }
+        .slide-pane.active { display: flex; animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .hud-scan { background: linear-gradient(to bottom, transparent 50%, rgba(0,229,255,0.01) 50%), linear-gradient(to right, rgba(0,229,255,0.01) 1px, transparent 1px); background-size: 100% 4px, 8px 100%; }
+    </style>
+</head>
+<body class="bg-androDark text-white font-sans min-h-screen w-screen flex flex-col justify-between overflow-x-hidden overflow-y-auto select-none">
+
+    <header class="w-full bg-androCard/90 backdrop-blur-md px-4 sm:px-8 py-4 flex justify-between items-center border-b border-gray-800/80 z-50 sticky top-0">
+        <div class="flex items-center space-x-4">
+            <div class="relative flex items-center justify-center">
+                <div class="absolute inset-0 bg-androLime/20 blur-md rounded-full animate-pulse"></div>
+                <div class="bg-androLime text-black font-bold px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm tracking-widest z-10 shadow-limeGlow">ANDROMEDERS LAB</div>
+            </div>
+            <div class="h-6 w-[1px] bg-gray-800 hidden md:block"></div>
+            <div class="hidden md:flex flex-col">
+                <span class="text-[10px] text-gray-500 font-mono uppercase tracking-wider">PROJECT OPERATIONAL HUB</span>
+                <span class="text-xs font-semibold text-gray-300">MISSION: DUAL-AXIS SOLAR TRACKING</span>
+            </div>
+        </div>
+
+        <div class="hidden lg:flex items-center space-x-6 font-mono text-[11px]">
+            <div class="flex flex-col items-end">
+                <span class="text-gray-500">SYSTEM STATUS</span>
+                <span class="text-androLime font-bold flex items-center gap-1.5"><span class="w-1.5 h-1.5 bg-androLime rounded-full animate-ping"></span>ONLINE</span>
+            </div>
+            <div class="flex flex-col items-end">
+                <span class="text-gray-500">CELL LOCATION</span>
+                <span class="text-androBlue font-bold">CSF KENITRA</span>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2.5 bg-black/40 border border-gray-800 px-3 py-1.5 rounded-xl">
+            <span class="text-[10px] font-mono text-gray-500 hidden xs:inline">MODULE</span>
+            <span id="slide-num" class="text-sm sm:text-base font-bold text-androLime font-mono">01</span>
+            <span class="text-gray-600 font-mono text-xs">/</span>
+            <span id="slide-total" class="text-xs font-mono text-gray-400">05</span>
+        </div>
+    </header>
+
+    <div class="w-full h-[2px] bg-gray-900/60 relative z-50">
+        <div id="mission-progress" class="h-full bg-gradient-to-r from-androBlue via-androLime to-emerald-400 shadow-blueGlow transition-all duration-500" style="width: 20%;"></div>
+    </div>
+
+    <main class="flex-grow w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex items-start justify-center">
+
+        <section id="pane-0" class="slide-pane active gap-6 lg:gap-8 lg:flex-row">
+            <div class="w-full lg:w-1/2 flex flex-col justify-between space-y-6">
+                <div class="space-y-4">
+                    <div class="inline-flex items-center space-x-2 bg-androLime/10 border border-androLime/30 px-3 py-1 rounded-full">
+                        <i class="fa-solid fa-satellite-dish text-androLime text-xs animate-bounce"></i>
+                        <span class="text-androLime text-[10px] font-mono font-bold uppercase tracking-widest">Opération Green Energy 2026</span>
+                    </div>
+                    <h1 class="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-tight">
+                        Notre Terre bouge.<br>Nos cerveaux aussi. <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-androLime via-androBlue to-emerald-400">Suivons l'énergie !</span>
+                    </h1>
+                    <p class="text-gray-400 text-sm sm:text-base leading-relaxed">
+                        Bienvenue dans l'arène, cellule d'ingénierie. Un panneau photovoltaïque immobile perd chaque seconde de précieuses ressources énergétiques. Notre mission collective ? Créer un traqueur solaire automatisé autonome à double axe capable de capter les moindres flux de photons.
+                    </p>
+                </div>
+                <div class="bg-androCard border border-gray-800 p-4 rounded-xl relative overflow-hidden">
+                    <h3 class="text-androRed font-mono font-bold text-xs uppercase mb-1"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Le Choc Énergétique Global</h3>
+                    <p class="text-gray-300 text-xs sm:text-sm">Un panneau solaire rigide et statique perd jusqu'à <span class="text-androRed font-bold text-base font-mono">40%</span> de l'irradiation disponible au cours d'une seule journée d'exposition.</p>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-1/2 bg-androCard rounded-2xl border border-gray-800 p-5 flex flex-col justify-between relative hud-scan space-y-6">
+                <div>
+                    <div class="flex items-center space-x-2 font-mono text-xs text-gray-200 mb-2">
+                        <span class="w-2 h-2 bg-androBlue rounded-full animate-ping"></span>
+                        <strong class="tracking-wide">INSPIRATION MACRO : NOOR OUARZAZATE</strong>
+                    </div>
+                    <p class="text-xs sm:text-sm text-gray-400 leading-relaxed">
+                        Le complexe thermo-solaire géant de <strong class="text-white">Noor Ouarzazate</strong> au Maroc utilise le suivi d'axe automatisé pour maximiser la distribution. Notre défi : le miniaturiser.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 text-center">
+                    <div class="p-2.5 bg-black/40 border border-gray-800 rounded-xl"><div class="text-androLime text-base mb-0.5"><i class="fa-solid fa-user-tie"></i></div><div class="text-[9px] uppercase tracking-wider font-mono text-gray-400">Chef de Projet</div></div>
+                    <div class="p-2.5 bg-black/40 border border-gray-800 rounded-xl"><div class="text-androBlue text-base mb-0.5"><i class="fa-solid fa-screwdriver-wrench"></i></div><div class="text-[9px] uppercase tracking-wider font-mono text-gray-400">Ingé Matériel</div></div>
+                    <div class="p-2.5 bg-black/40 border border-gray-800 rounded-xl"><div class="text-purple-400 text-base mb-0.5"><i class="fa-solid fa-code"></i></div><div class="text-[9px] uppercase tracking-wider font-mono text-gray-400">Architecte Soft</div></div>
+                    <div class="p-2.5 bg-black/40 border border-gray-800 rounded-xl"><div class="text-emerald-400 text-base mb-0.5"><i class="fa-solid fa-chart-line"></i></div><div class="text-[9px] uppercase tracking-wider font-mono text-gray-400">Data Analyst</div></div>
+                </div>
+
+                <div class="bg-androBlue/5 border border-androBlue/20 px-3 py-2 rounded-lg text-center text-[11px] text-androBlue font-mono">
+                    💡 Présentez-vous fièrement devant l'audience en tant que cellule d'ingénieurs unifiée !
+                </div>
+            </div>
+        </section>
+
+        <section id="pane-1" class="slide-pane gap-6 lg:gap-8 lg:flex-row">
+            <div class="w-full lg:w-5/12 flex flex-col justify-between space-y-6 lg:space-y-0">
+                <div class="space-y-3">
+                    <span class="text-androBlue font-bold text-xs uppercase tracking-widest border border-androBlue/30 px-2.5 py-1 rounded-full font-mono">Session 02 : Matériel</span>
+                    <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">Anatomie du Robot.</h2>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Chaque composant doit s'imbriquer avec précision. Notre robot associe une structure mécanique robuste à des capteurs optiques et des actionneurs motorisés de pointe.
+                    </p>
+                </div>
+                <div id="hardware-desc-box" class="bg-gradient-to-br from-androCard to-black border border-gray-800 p-4 sm:p-5 rounded-xl min-h-[120px] flex flex-col justify-center">
+                    <p class="text-gray-500 font-mono text-[10px] uppercase mb-1.5 text-androBlue"><i class="fa-solid fa-circle-info mr-2"></i>Moniteur d'inspection</p>
+                    <p id="hardware-dynamic-text" class="text-xs sm:text-sm text-gray-300">Cliquez ou survolez l'un des composants sur le panneau latéral pour charger ses caractéristiques techniques.</p>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-7/12 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div onclick="inspectHardware('brain')" class="bg-androCard border border-gray-800 rounded-xl p-4 flex flex-col justify-between hover:border-androLime cursor-pointer transition group min-h-[110px]">
+                    <div class="flex justify-between items-center"><div class="text-androLime text-lg"><i class="fa-solid fa-microchip"></i></div><span class="text-[9px] font-mono text-gray-500">MCU / ARDUINO</span></div>
+                    <h4 class="font-bold text-sm text-gray-200 mt-2">Le Cerveau Électronique</h4>
+                </div>
+                <div onclick="inspectHardware('eyes')" class="bg-androCard border border-gray-800 rounded-xl p-4 flex flex-col justify-between hover:border-androLime cursor-pointer transition group min-h-[110px]">
+                    <div class="flex justify-between items-center"><div class="text-androBlue text-lg"><i class="fa-solid fa-eye"></i></div><span class="text-[9px] font-mono text-gray-500">OPTICAL / LDR</span></div>
+                    <h4 class="font-bold text-sm text-gray-200 mt-2">Capteurs Optiques Matrix</h4>
+                </div>
+                <div onclick="inspectHardware('muscles')" class="bg-androCard border border-gray-800 rounded-xl p-4 flex flex-col justify-between hover:border-androLime cursor-pointer transition group min-h-[110px]">
+                    <div class="flex justify-between items-center"><div class="text-purple-400 text-lg"><i class="fa-solid fa-gears"></i></div><span class="text-[9px] font-mono text-gray-500">MOTOR / SG90</span></div>
+                    <h4 class="font-bold text-sm text-gray-200 mt-2">Servomoteurs Azimut & Pitch</h4>
+                </div>
+                <div onclick="inspectHardware('frame')" class="bg-androCard border border-gray-800 rounded-xl p-4 flex flex-col justify-between hover:border-androLime cursor-pointer transition group min-h-[110px]">
+                    <div class="flex justify-between items-center"><div class="text-emerald-400 text-lg"><i class="fa-solid fa-layer-group"></i></div><span class="text-[9px] font-mono text-gray-500">MECH / FRAME</span></div>
+                    <h4 class="font-bold text-sm text-gray-200 mt-2">Châssis & Entretoises Laiton</h4>
+                </div>
+            </div>
+        </section>
+
+        <section id="pane-2" class="slide-pane gap-6 lg:gap-8 lg:flex-row">
+            <div class="w-full lg:w-4/12 flex flex-col justify-between space-y-4 lg:space-y-0">
+                <div class="space-y-2">
+                    <span class="text-purple-400 font-bold text-xs uppercase tracking-widest border border-purple-500/30 px-2.5 py-1 rounded-full font-mono">Architecture Logicielle</span>
+                    <h2 class="text-2xl sm:text-3xl font-bold tracking-tight">Simulateur de Boucle Live.</h2>
+                    <p class="text-gray-400 text-xs sm:text-sm">
+                        Déplacez la souris dans le carré de droite ou bougez les glissières manuelles ci-dessous pour voir l'ajustement dynamique des servos.
+                    </p>
+                </div>
+
+                <div class="bg-black/60 border border-gray-800 rounded-xl p-3.5 space-y-2.5">
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px] font-mono">
+                            <span class="text-gray-400">Course Azimut Solaire (X) :</span>
+                            <span id="slider-x-val" class="text-androLime">50%</span>
+                        </div>
+                        <input type="range" id="input-sun-x" min="0" max="100" value="50" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-androLime">
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px] font-mono">
+                            <span class="text-gray-400">Élévation Zénithale (Y) :</span>
+                            <span id="slider-y-val" class="text-androBlue">25%</span>
+                        </div>
+                        <input type="range" id="input-sun-y" min="0" max="100" value="25" class="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-androBlue">
+                    </div>
+                </div>
+
+                <div class="bg-black/80 border border-gray-800 rounded-xl p-3.5 font-mono text-[11px] space-y-1">
+                    <div class="flex justify-between"><span>Moyenne LDR Haut (U) :</span><span id="sim-u" class="text-purple-400 font-bold">512</span></div>
+                    <div class="flex justify-between"><span>Moyenne LDR Bas (D) :</span><span id="sim-d" class="text-purple-400 font-bold">512</span></div>
+                    <div class="flex justify-between"><span>Moyenne LDR Gauche (L) :</span><span id="sim-l" class="text-androBlue font-bold">512</span></div>
+                    <div class="flex justify-between"><span>Moyenne LDR Droite (R) :</span><span id="sim-r" class="text-androBlue font-bold">512</span></div>
+                    <div class="h-[1px] bg-gray-800 my-1"></div>
+                    <div class="flex justify-between font-bold text-androLime"><span>ANGLE SERVO HORIZ :</span><span id="angle-h-hud">90°</span></div>
+                    <div class="flex justify-between font-bold text-androBlue"><span>ANGLE SERVO VERT :</span><span id="angle-v-hud">90°</span></div>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-8/12 flex flex-col bg-black rounded-2xl border border-gray-800 p-4 sm:p-5 relative overflow-hidden min-h-[300px]">
+                <div class="w-full h-[200px] sm:h-[230px] relative rounded-xl bg-androCard/40 overflow-hidden cursor-crosshair" id="photon-core-sandbox">
+                    
+                    <div id="virtual-sun" class="absolute w-12 h-12 bg-gradient-to-r from-yellow-400 to-amber-500 rounded-full shadow-[0_0_35px_#f59e0b] pointer-events-none -translate-x-1/2 -translate-y-1/2 top-1/4 left-1/4 flex items-center justify-center transition-all duration-75 ease-out">
+                        <i class="fa-solid fa-sun text-black text-sm"></i>
+                    </div>
+
+                    <div id="virtual-hardware-plate" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-36 h-36 bg-androCard border border-gray-700 rounded-xl flex flex-col justify-between p-2.5 shadow-2xl transition-transform duration-150 ease-out">
+                        <div class="flex justify-between">
+                            <span id="node-tl" class="w-6 h-6 rounded-full bg-gray-900 text-[8px] flex items-center justify-center font-bold text-gray-500 border border-gray-800 font-mono">LDR1</span>
+                            <span id="node-tr" class="w-6 h-6 rounded-full bg-gray-900 text-[8px] flex items-center justify-center font-bold text-gray-500 border border-gray-800 font-mono">LDR2</span>
+                        </div>
+                        <div class="w-9 h-9 bg-androLime/10 border border-androLime/30 text-androLime rounded-lg mx-auto flex items-center justify-center text-sm">
+                            <i class="fa-solid fa-solar-panel"></i>
+                        </div>
+                        <div class="flex justify-between">
+                            <span id="node-bl" class="w-6 h-6 rounded-full bg-gray-900 text-[8px] flex items-center justify-center font-bold text-gray-500 border border-gray-800 font-mono">LDR3</span>
+                            <span id="node-br" class="w-6 h-6 rounded-full bg-gray-900 text-[8px] flex items-center justify-center font-bold text-gray-500 border border-gray-800 font-mono">LDR4</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-950 p-2 rounded-lg border border-gray-800/80 font-mono text-[10px] text-gray-500 mt-3 overflow-x-auto custom-scrollbar whitespace-nowrap">
+                    diffH = (avgL - avgR); diffV = (avgU - avgD); if(abs(diffH) > tol) { servoH.write(currH + direction); }
+                </div>
+            </div>
+        </section>
+
+        <section id="pane-3" class="slide-pane gap-6 lg:gap-8 lg:flex-row">
+            <div class="w-full lg:w-5/12 flex flex-col justify-between space-y-6 lg:space-y-0">
+                <div class="space-y-3">
+                    <span class="text-emerald-400 font-bold text-xs uppercase tracking-widest border border-emerald-500/30 px-2.5 py-1 rounded-full font-mono">Session 04 : Validation</span>
+                    <h2 class="text-3xl font-bold tracking-tight">Preuve et Rendement.</h2>
+                    <p class="text-gray-400 text-sm leading-relaxed">
+                        Un scientifique ne devine pas, il prouve à l'aide de données mathématiques. En couplant notre bouclier de charge à un testeur matériel, nous mesurons précisément l'intensité récoltée.
+                    </p>
+                </div>
+
+                <div class="bg-androCard border border-gray-800 p-4 rounded-xl space-y-3">
+                    <p class="text-xs font-mono text-gray-400 uppercase tracking-wider">Sélectionnez la configuration :</p>
+                    <div class="flex gap-2.5">
+                        <button onclick="computeYield('fixed')" class="flex-1 bg-gray-900 hover:bg-gray-800 text-gray-300 font-mono text-xs py-2.5 px-3 rounded-lg border border-gray-800 transition">MODE FIXE BRUT</button>
+                        <button onclick="computeYield('tracker')" class="flex-1 bg-gradient-to-r from-androLime to-emerald-500 text-black font-mono font-bold text-xs py-2.5 px-3 rounded-lg shadow-limeGlow transition">⚡ DUAL-AXIS ACTIVE</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="w-full lg:w-7/12 bg-androCard rounded-2xl border border-gray-800 p-5 flex flex-col justify-between relative hud-scan min-h-[220px]">
+                <h3 class="font-mono text-xs font-bold text-emerald-400 uppercase tracking-widest border-b border-gray-800/60 pb-2"><i class="fa-solid fa-chart-line mr-2"></i>Graphique de récolte de photons</h3>
+
+                <div class="flex-grow flex flex-col justify-center space-y-5 my-4">
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-[11px] font-mono">
+                            <span class="text-gray-500">📌 PANNEAU FIXE STATIONNAIRE</span>
+                            <span class="font-bold text-gray-500">100% (BASE)</span>
+                        </div>
+                        <div class="w-full bg-black h-6 rounded-lg overflow-hidden p-0.5 border border-gray-800/60">
+                            <div class="bg-gray-600 h-full rounded-md" style="width: 60%;"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-[11px] font-mono">
+                            <span class="text-androLime font-bold">⚡ ANDROMEDERS TRACKER ACTIF</span>
+                            <span id="active-yield-text" class="font-bold text-gray-400">??? CLIQUEZ SUR LE BOUTON</span>
+                        </div>
+                        <div class="w-full bg-black h-6 rounded-lg overflow-hidden p-0.5 border border-gray-800/60">
+                            <div id="active-yield-bar" class="bg-gradient-to-r from-emerald-500 to-androLime h-full rounded-md transition-all duration-700" style="width: 10%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-[11px] text-gray-500 font-mono text-center">
+                    Le suivi dynamique élimine l'angle de réflexion critique de la cellule photovoltaïque.
+                </div>
+            </div>
+        </section>
+
+        <section id="pane-4" class="slide-pane space-y-6">
+            <div class="text-center max-w-2xl mx-auto space-y-3">
+                <span class="text-androLime font-bold text-xs uppercase tracking-widest bg-androLime/10 border border-androLime/40 px-4 py-1.5 rounded-full animate-pulse font-mono">L'Épreuve du Gala</span>
+                <h2 class="text-3xl sm:text-5xl font-bold tracking-tight">Le Scénario Blackout.</h2>
+                <p class="text-gray-400 text-sm leading-relaxed">
+                    Instructions en direct face au public : Éteignez l'intégralité des lumières de la salle. Allumez votre lampe torche mobile et guidez le robot devant les yeux de l'audience ébahie.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 max-w-4xl mx-auto w-full">
+                <div class="bg-androCard border border-gray-800 p-4.5 rounded-xl flex items-start space-x-3.5">
+                    <div class="p-2.5 bg-black rounded-lg text-androLime text-base flex-shrink-0"><i class="fa-solid fa-lightbulb-slash"></i></div>
+                    <div><h4 class="font-bold text-xs sm:text-sm text-gray-200">1 / Obscurité Totale</h4><p class="text-[11px] text-gray-400 mt-0.5">Le robot se fige, la tension différentielle est nulle.</p></div>
+                </div>
+                <div class="bg-androCard border border-gray-800 p-4.5 rounded-xl flex items-start space-x-3.5">
+                    <div class="p-2.5 bg-black rounded-lg text-androBlue text-base flex-shrink-0"><i class="fa-solid fa-flashlight"></i></div>
+                    <div><h4 class="font-bold text-xs sm:text-sm text-gray-200">2 / Flash Directionnel</h4><p class="text-[11px] text-gray-400 mt-0.5">La torche crée un déséquilibre immédiat sur la matrice LDR.</p></div>
+                </div>
+                <div class="bg-androCard border border-gray-800 p-4.5 rounded-xl flex items-start space-x-3.5">
+                    <div class="p-2.5 bg-black rounded-lg text-purple-400 text-base flex-shrink-0"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <div><h4 class="font-bold text-xs sm:text-sm text-gray-200">3 / Alignement</h4><p class="text-[11px] text-gray-400 mt-0.5">Les moteurs centrent l'axe du panneau perpendiculairement au flux.</p></div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-center border-t border-gray-900 pt-4 text-[11px] font-mono text-gray-500 text-center sm:text-left gap-2">
+                <p>Cellule d'ingénierie Andromeders — Next Genius Generation</p>
+                <p class="text-androLime font-bold tracking-wider uppercase">⚡ REJOIGNEZ LA TRANSITION ÉNERGÉTIQUE</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="w-full bg-androCard px-4 sm:px-8 py-4.5 flex justify-between items-center border-t border-gray-800/80 z-50 sticky bottom-0">
+        <button id="master-prev-btn" onclick="stepModule(-1)" class="bg-gray-900 hover:bg-gray-800 border border-gray-800 text-gray-300 font-mono font-bold py-2 px-4 rounded-xl text-xs tracking-wider transition disabled:opacity-25 disabled:cursor-not-allowed" disabled>
+            <i class="fa-solid fa-chevron-left mr-1.5"></i> PRÉCÉDENT
+        </button>
+
+        <div class="hidden sm:flex items-center space-x-2" id="nav-indicator-hub"></div>
+
+        <button id="master-next-btn" onclick="stepModule(1)" class="bg-androLime hover:bg-[#b5e600] text-black font-mono font-bold py-2 px-5 rounded-xl text-xs tracking-wider shadow-limeGlow transition">
+            SUIVANT <i class="fa-solid fa-chevron-right ml-1.5"></i>
+        </button>
+    </footer>
+
+    <script>
+        let currentModuleIndex = 0;
+        const totalModules = document.querySelectorAll('.slide-pane').length;
+        document.getElementById('slide-total').innerText = String(totalModules).padStart(2, '0');
+
+        const indicatorHub = document.getElementById('nav-indicator-hub');
+        for(let i=0; i<totalModules; i++) {
+            const indexTick = document.createElement('div');
+            indexTick.id = `module-tick-${i}`;
+            indexTick.className = `h-1 transition-all duration-300 rounded-full ${i === 0 ? 'w-8 bg-androLime shadow-limeGlow' : 'w-2 bg-gray-800'}`;
+            indicatorHub.appendChild(indexTick);
+        }
+
+        function stepModule(direction) {
+            document.getElementById(`pane-${currentModuleIndex}`).classList.remove('active');
+            currentModuleIndex = Math.max(0, Math.min(totalModules - 1, currentModuleIndex + direction));
+            document.getElementById(`pane-${currentModuleIndex}`).classList.add('active');
+
+            document.getElementById('slide-num').innerText = String(currentModuleIndex + 1).padStart(2, '0');
+            document.getElementById('mission-progress').style.width = `${((currentModuleIndex + 1) / totalModules) * 100}%`;
+            document.getElementById('master-prev-btn').disabled = currentModuleIndex === 0;
+            
+            if(currentModuleIndex === totalModules - 1) {
+                document.getElementById('master-next-btn').innerHTML = 'TERMINER <i class="fa-solid fa-circle-check ml-1"></i>';
+            } else {
+                document.getElementById('master-next-btn').innerHTML = 'SUIVANT <i class="fa-solid fa-chevron-right ml-1"></i>';
+            }
+
+            for(let i=0; i<totalModules; i++) {
+                document.getElementById(`module-tick-${i}`).className = `h-1 rounded-full transition-all duration-300 ${i === currentModuleIndex ? 'w-8 bg-androLime shadow-limeGlow' : 'w-2 bg-gray-800'}`;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if(e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); if(currentModuleIndex < totalModules - 1) stepModule(1); }
+            if(e.key === 'ArrowLeft') { e.preventDefault(); if(currentModuleIndex > 0) stepModule(-1); }
+        });
+
+        function inspectHardware(item) {
+            const textTarget = document.getElementById('hardware-dynamic-text');
+            if(item === 'brain') {
+                textTarget.innerHTML = "🧠 <strong class='text-androLime'>Arduino R3 & Logic:</strong> Reçoit les tensions analogiques des 4 LDR (mappées de 0 à 1023) pour calculer l'erreur d'azimut et corriger la position angulaire des servos en temps réel.";
+            } else if (item === 'eyes') {
+                textTarget.innerHTML = "👀 <strong class='text-androBlue'>Matrice Photonique:</strong> 4 photorésistances séparées par une barrière opaque qui projette une ombre asymétrique dès que le soleil s'écarte de la perpendiculaire.";
+            } else if (item === 'muscles') {
+                textTarget.innerHTML = "⚙️ <strong class='text-purple-400'>Servomoteurs SG90:</strong> Actionneurs légers gérant l'orientation d'Est en Ouest (Azimut) et de Bas en Haut (Pitch) avec une précision d'un degré géométrique.";
+            } else if (item === 'frame') {
+                textTarget.innerHTML = "🔧 <strong class='text-emerald-400'>Châssis Polymère:</strong> Découpé au laser pour une robustesse diélectrique totale. Les liaisons pivotantes emploient des bagues en laiton pour annuler les frictions mécaniques.";
+            }
+        }
+
+        const photonCoreSandbox = document.getElementById('photon-core-sandbox');
+        const virtualSun = document.getElementById('virtual-sun');
+        const virtualHardwarePlate = document.getElementById('virtual-hardware-plate');
+        const sliderX = document.getElementById('input-sun-x');
+        const sliderY = document.getElementById('input-sun-y');
+
+        function updateSimulation(pctX, pctY, triggerSource) {
+            const limits = photonCoreSandbox.getBoundingClientRect();
+            const pixelX = (pctX / 100) * limits.width;
+            const pixelY = (pctY / 100) * limits.height;
+
+            virtualSun.style.left = `${pixelX}px`;
+            virtualSun.style.top = `${pixelY}px`;
+
+            const midX = limits.width / 2;
+            const midY = limits.height / 2;
+            const deltaX = Math.round(pixelX - midX);
+            const deltaY = Math.round(pixelY - midY);
+
+            if(triggerSource === 'mouse') {
+                sliderX.value = Math.round(pctX);
+                sliderY.value = Math.round(pctY);
+            }
+            document.getElementById('slider-x-val').innerText = `${sliderX.value}%`;
+            document.getElementById('slider-y-val').innerText = `${sliderY.value}%`;
+
+            let valTL = Math.max(120, Math.round(1023 - (Math.hypot(pixelX - 30, pixelY - 30) / 1.5)));
+            let valTR = Math.max(120, Math.round(1023 - (Math.hypot(pixelX - (limits.width - 30), pixelY - 30) / 1.5)));
+            let valBL = Math.max(120, Math.round(1023 - (Math.hypot(pixelX - 30, pixelY - (limits.height - 30)) / 1.5)));
+            let valBR = Math.max(120, Math.round(1023 - (Math.hypot(pixelX - (limits.width - 30), pixelY - (limits.height - 30)) / 1.5)));
+
+            document.getElementById('sim-u').innerText = Math.round((valTL + valTR) / 2);
+            document.getElementById('sim-d').innerText = Math.round((valBL + valBR) / 2);
+            document.getElementById('sim-l').innerText = Math.round((valTL + valBL) / 2);
+            document.getElementById('sim-r').innerText = Math.round((valTR + valBR) / 2);
+
+            document.getElementById('angle-h-hud').innerText = `${Math.max(0, Math.min(180, 90 + Math.round(deltaX / 2.2)))}°`;
+            document.getElementById('angle-v-hud').innerText = `${Math.max(0, Math.min(180, 90 - Math.round(deltaY / 2.2)))}°`;
+
+            virtualHardwarePlate.style.transform = `translate(-50%, -50%) rotateY(${Math.max(-25, Math.min(25, deltaX / 5.5))}deg) rotateX(${Math.max(-25, Math.min(25, -deltaY / 5.5))}deg)`;
+
+            const checkThresh = 620;
+            document.getElementById('node-tl').style.backgroundColor = valTL > checkThresh ? '#CCFF00' : '#0F1115';
+            document.getElementById('node-tl').style.color = valTL > checkThresh ? '#000' : '#4b5563';
+            document.getElementById('node-tr').style.backgroundColor = valTR > checkThresh ? '#CCFF00' : '#0F1115';
+            document.getElementById('node-tr').style.color = valTR > checkThresh ? '#000' : '#4b5563';
+            document.getElementById('node-bl').style.backgroundColor = valBL > checkThresh ? '#CCFF00' : '#0F1115';
+            document.getElementById('node-bl').style.color = valBL > checkThresh ? '#000' : '#4b5563';
+            document.getElementById('node-br').style.backgroundColor = valBR > checkThresh ? '#CCFF00' : '#0F1115';
+            document.getElementById('node-br').style.color = valBR > checkThresh ? '#000' : '#4b5563';
+        }
+
+        photonCoreSandbox.addEventListener('mousemove', (event) => {
+            const limits = photonCoreSandbox.getBoundingClientRect();
+            updateSimulation(((event.clientX - limits.left) / limits.width) * 100, ((event.clientY - limits.top) / limits.height) * 100, 'mouse');
+        });
+
+        const syncSliderAction = () => updateSimulation(parseFloat(sliderX.value), parseFloat(sliderY.value), 'slider');
+        sliderX.addEventListener('input', syncSliderAction);
+        sliderY.addEventListener('input', syncSliderAction);
+
+        function computeYield(mode) {
+            const label = document.getElementById('active-yield-text');
+            const bar = document.getElementById('active-yield-bar');
+            if(mode === 'tracker') {
+                label.innerText = '125% — (+25% ENERGY GAIN)';
+                label.className = 'font-bold text-androLime animate-pulse';
+                bar.style.width = '100%';
+                bar.className = 'bg-gradient-to-r from-emerald-500 via-androLime to-emerald-500 h-full rounded-md transition-all duration-700 shadow-limeGlow';
+            } else {
+                label.innerText = '0% — SANS TRAQUEUR';
+                label.className = 'font-bold text-androRed';
+                bar.style.width = '0%';
+            }
+        }
+
+        window.addEventListener('resize', syncSliderAction);
+        setTimeout(syncSliderAction, 600);
+    </script>
+</body>
+</html>
